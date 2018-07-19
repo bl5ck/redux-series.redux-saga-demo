@@ -3,6 +3,10 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 Below you will find some information on how to perform common tasks.<br>
 You can find the most recent version of this guide [here](https://github.com/facebookincubator/create-react-app/blob/master/packages/react-scripts/template/README.md).
 
+## Basic setup
+
+In order to get this demo worked, you must rename `src/config.local.template.js` to `src/config.local.js` and update your own local configs.
+
 ## Table of Contents
 
 - [Updating to New Releases](#updating-to-new-releases)
