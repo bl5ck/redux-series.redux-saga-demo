@@ -234,7 +234,6 @@ export function search(query, options) {
     ...rest
   } =
     options || {};
-  console.log(maxResults);
   return checkAuth().then(
     ({ access_token }) =>
       fetch(
@@ -254,8 +253,9 @@ export function search(query, options) {
         }
       ).then(res => res.json()),
     err => {
-      // setSignIn(false);
+      setSignIn(false);
       console.error('Something weird happened!', err);
+      window.location.reload();
     }
   );
 }

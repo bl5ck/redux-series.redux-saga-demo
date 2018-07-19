@@ -1,6 +1,5 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import PropTypes from 'prop-types';
 import Grid from '@material-ui/core/Grid';
 import Paper from '@material-ui/core/Paper';
 import Input from '@material-ui/core/Input';
@@ -13,12 +12,18 @@ import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableRow from '@material-ui/core/TableRow';
 import TablePagination from '@material-ui/core/TablePagination';
-import FirstPageIcon from '@material-ui/icons/FirstPage';
-import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
-import KeyboardArrowRight from '@material-ui/icons/KeyboardArrowRight';
-import LastPageIcon from '@material-ui/icons/LastPage';
+import LinearProgress from '@material-ui/core/LinearProgress';
 import { debounce } from '../../utils';
-import { videosLoad, getVideos, getVideosPageInfo } from './videosDuck';
+import {
+  loadVideos,
+  favoriteVideos,
+  undoFavoriteVideos,
+  getVideos,
+  getVideosPageInfo,
+  getFavoriteVideoIds
+} from './videosDuck';
+import ButtonFavorite from '../../components/ButtonFavorite';
+import PaginationActions from '../../components/PaginationActions';
 
 const styles = {
   root: {
@@ -34,111 +39,6 @@ const styles = {
   }
 };
 
-const actionsStyles = theme => ({
-  root: {
-    flexShrink: 0,
-    color: theme.palette.text.secondary,
-    marginLeft: theme.spacing.unit * 2.5
-  }
-});
-
-class PaginationActions extends React.Component {
-  handleFirstPageButtonClick = event => {
-    this.props.onChangePage(event, 0);
-  };
-
-  handleBackButtonClick = event => {
-    this.props.onChangePage(event, this.props.page - 1);
-  };
-
-  handleNextButtonClick = event => {
-    this.props.onChangePage(event, this.props.page + 1);
-  };
-
-  handleLastPageButtonClick = event => {
-    this.props.onChangePage(
-      event,
-      Math.max(0, Math.ceil(this.props.count / this.props.rowsPerPage) - 1)
-    );
-  };
-
-  render() {
-    const {
-      classes,
-      count,
-      page,
-      rowsPerPage,
-      theme,
-      hasFirstNavigation,
-      hasLastNavigation
-    } = this.props;
-
-    return (
-      <div className={classes.root}>
-        {!hasFirstNavigation ? null : (
-          <IconButton
-            onClick={this.handleFirstPageButtonClick}
-            disabled={page === 0}
-            aria-label="First Page"
-          >
-            {theme.direction === 'rtl' ? <LastPageIcon /> : <FirstPageIcon />}
-          </IconButton>
-        )}
-        <IconButton
-          onClick={this.handleBackButtonClick}
-          disabled={page === 0}
-          aria-label="Previous Page"
-        >
-          {theme.direction === 'rtl' ? (
-            <KeyboardArrowRight />
-          ) : (
-            <KeyboardArrowLeft />
-          )}
-        </IconButton>
-        <IconButton
-          onClick={this.handleNextButtonClick}
-          disabled={page >= Math.ceil(count / rowsPerPage) - 1}
-          aria-label="Next Page"
-        >
-          {theme.direction === 'rtl' ? (
-            <KeyboardArrowLeft />
-          ) : (
-            <KeyboardArrowRight />
-          )}
-        </IconButton>
-        {!hasLastNavigation ? null : (
-          <IconButton
-            onClick={this.handleLastPageButtonClick}
-            disabled={page >= Math.ceil(count / rowsPerPage) - 1}
-            aria-label="Last Page"
-          >
-            {theme.direction === 'rtl' ? <FirstPageIcon /> : <LastPageIcon />}
-          </IconButton>
-        )}
-      </div>
-    );
-  }
-}
-
-PaginationActions.propTypes = {
-  classes: PropTypes.object.isRequired,
-  count: PropTypes.number.isRequired,
-  onChangePage: PropTypes.func.isRequired,
-  page: PropTypes.number.isRequired,
-  rowsPerPage: PropTypes.number.isRequired,
-  theme: PropTypes.object.isRequired,
-  hasFirstNavigation: PropTypes.bool,
-  hasLastNavigation: PropTypes.bool
-};
-
-PaginationActions.defaultProps = {
-  hasFirstNavigation: true,
-  hasLastNavigation: true
-};
-const PaginationActionsWrapped = withStyles(actionsStyles, {
-  withTheme: true
-})(PaginationActions);
-
 class Videos extends React.Component {
   static defaultProps: {
     videos: []
@@ -146,7 +46,8 @@ class Videos extends React.Component {
   state = {
     query: '',
     resultsPerPage: 9,
-    page: 0
+    page: 0,
+    loaded: {}
   };
   constructor(props) {
     super(props);
@@ -168,7 +69,6 @@ class Videos extends React.Component {
       const resultsPerPageOptions = this.getResultsPerPageOptions(
         resultsPerPage
       );
-      console.log(resultsPerPage, resultsPerPageOptions);
       this.state = { query, page, resultsPerPage, resultsPerPageOptions };
     } else {
       const resultsPerPageOptions = this.getResultsPerPageOptions(
@@ -183,8 +83,8 @@ class Videos extends React.Component {
   getResultsPerPageOptions = resultsPerPage =>
     new Array(3).fill(0).map((item, index) => (index + 1) * resultsPerPage);
   search = pageToken => {
-    const { videosLoad } = this.props;
-    videosLoad({
+    const { loadVideos } = this.props;
+    loadVideos({
       query: this.state.query,
       maxResults: this.state.resultsPerPage,
       pageToken
@@ -211,14 +111,23 @@ class Videos extends React.Component {
     return e => this.setState({ [input]: e.target.value });
   }
   render() {
-    const { videos, classes, pageInfo } = this.props;
+    const {
+      videos,
+      classes,
+      pageInfo,
+      favoriteVideoIds,
+      favoriteVideos,
+      undoFavoriteVideos
+    } = this.props;
     return (
       <div className={classes.root}>
         <Input
           value={this.state.password}
           onChange={e => {
             e.persist();
-            debounce(() => this.handleChange('query')(e), 500);
+            debounce(() => {
+              this.handleChange('query')(e);
+            }, 500)();
           }}
           style={{
             marginBottom: 20
@@ -236,7 +145,7 @@ class Videos extends React.Component {
             <InputAdornment position="end">
               <IconButton
                 aria-label="Toggle password visibility"
-                onClick={this.search}
+                onClick={() => this.search()}
               >
                 <Search />
               </IconButton>
@@ -276,9 +185,46 @@ class Videos extends React.Component {
                         top: 0,
                         left: 0,
                         width: '100%',
-                        height: '100%'
+                        height: '100%',
+                        transition: 'opacity linear .3s',
+                        opacity: !this.state.loaded[videoId] ? 0.3 : 1
+                      }}
+                      onLoad={() => {
+                        this.setState({
+                          loaded: {
+                            ...this.state.loaded,
+                            [videoId]: true
+                          }
+                        });
                       }}
                     />
+                    {!this.state.loaded[videoId] ? null : (
+                      <ButtonFavorite
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          right: '20%'
+                        }}
+                        onClick={() => {
+                          if (!favoriteVideoIds.includes(videoId)) {
+                            favoriteVideos([videoId]);
+                          } else {
+                            undoFavoriteVideos([videoId]);
+                          }
+                        }}
+                        checked={favoriteVideoIds.includes(videoId)}
+                      />
+                    )}
+                    {!this.state.loaded[videoId] ? (
+                      <LinearProgress
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%'
+                        }}
+                      />
+                    ) : null}
                   </Paper>
                 </Grid>
               ))}
@@ -295,7 +241,7 @@ class Videos extends React.Component {
                     page={this.state.page}
                     onChangePage={this.handleChangePage}
                     onChangeRowsPerPage={this.handleChangeRowsPerPage}
-                    ActionsComponent={PaginationActionsWrapped}
+                    ActionsComponent={PaginationActions}
                   />
                 </TableRow>
               </TableBody>
@@ -310,9 +256,12 @@ class Videos extends React.Component {
 export default connect(
   (state, props) => ({
     videos: getVideos(state, props),
+    favoriteVideoIds: getFavoriteVideoIds(state, props),
     pageInfo: getVideosPageInfo(state, props)
   }),
   {
-    videosLoad
+    loadVideos,
+    favoriteVideos,
+    undoFavoriteVideos
   }
 )(withStyles(styles)(Videos));

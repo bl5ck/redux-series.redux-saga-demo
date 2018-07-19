@@ -1,21 +1,21 @@
 import { call, put, takeEvery, all, fork } from 'redux-saga/effects';
-import { VIDEOS_LOAD, videosLoadDone } from './videosDuck';
+import { VIDEOS_LOAD, loadVideosDone } from './videosDuck';
 import { search } from '../../utils';
 
-export function* videosLoad(action) {
+export function* loadVideos(action) {
   try {
     const { query, ...options } = action.payload;
     const response = yield call(search, query, options);
-    yield put(videosLoadDone(response));
+    yield put(loadVideosDone(response));
   } catch (e) {
-    yield put(videosLoadDone({ items: [], error: e.message }));
+    yield put(loadVideosDone({ items: [], error: e.message }));
   }
 }
 
 export function* watchVideosLoad() {
-  yield takeEvery(VIDEOS_LOAD, videosLoad);
+  yield takeEvery(VIDEOS_LOAD, loadVideos);
 }
 
 export default function* root() {
-  yield all([fork(videosLoad), fork(watchVideosLoad)]);
+  yield all([fork(loadVideos), fork(watchVideosLoad)]);
 }
