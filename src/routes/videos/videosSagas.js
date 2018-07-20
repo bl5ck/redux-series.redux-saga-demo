@@ -2,7 +2,7 @@ import { call, put, takeEvery, all, fork } from 'redux-saga/effects';
 import { VIDEOS_LOAD, loadVideosDone } from './videosDuck';
 import { search } from '../../utils';
 
-export function* loadVideos(action) {
+export function* loadVideos(action = { payload: { query: '' } }) {
   try {
     const { query, ...options } = action.payload;
     const response = yield call(search, query, options);

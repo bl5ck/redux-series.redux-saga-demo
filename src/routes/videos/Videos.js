@@ -77,9 +77,6 @@ class Videos extends React.Component {
       this.state.resultsPerPageOptions = resultsPerPageOptions;
     }
   }
-  componentWillMount() {
-    this.search();
-  }
   getResultsPerPageOptions = resultsPerPage =>
     new Array(3).fill(0).map((item, index) => (index + 1) * resultsPerPage);
   search = pageToken => {
