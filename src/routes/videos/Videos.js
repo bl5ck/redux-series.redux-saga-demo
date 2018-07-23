@@ -1,7 +1,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import Grid from '@material-ui/core/Grid';
-import Paper from '@material-ui/core/Paper';
 import Input from '@material-ui/core/Input';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import IconButton from '@material-ui/core/IconButton';
@@ -12,7 +11,7 @@ import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableRow from '@material-ui/core/TableRow';
 import TablePagination from '@material-ui/core/TablePagination';
-import LinearProgress from '@material-ui/core/LinearProgress';
+import PropTypes from 'prop-types';
 import { debounce } from '../../utils';
 import {
   loadVideos,
@@ -22,8 +21,8 @@ import {
   getVideosPageInfo,
   getFavoriteVideoIds
 } from './videosDuck';
-import ButtonFavorite from '../../components/ButtonFavorite';
 import PaginationActions from '../../components/PaginationActions';
+import VideoCard from '../../components/VideoCard';
 
 const styles = {
   root: {
@@ -41,7 +40,20 @@ const styles = {
 
 class Videos extends React.Component {
   static defaultProps: {
-    videos: []
+    videos: [],
+    pageInfo: null
+  };
+  static propTypes = {
+    classes: PropTypes.object.isRequired,
+    favoriteVideoIds: PropTypes.arrayOf(PropTypes.string).isRequired,
+    favoriteVideos: PropTypes.func.isRequired,
+    loadVideos: PropTypes.func.isRequired,
+    pageInfo: PropTypes.shape({
+      nextPageToken: PropTypes.string,
+      prevPageToken: PropTypes.string
+    }),
+    videos: PropTypes.array,
+    undoFavoriteVideos: PropTypes.func.isRequired
   };
   state = {
     query: '',
@@ -161,70 +173,31 @@ class Videos extends React.Component {
         <Grid container spacing={8}>
           {!videos
             ? null
-            : videos.map(({ id: { videoId }, snippet: { title } }) => (
-                <Grid item xs={12} sm={6} md={4} key={videoId}>
-                  <Paper
-                    style={{
-                      position: 'relative',
-                      paddingBottom: '56.25%' /* 16:9 */,
-                      paddingTop: '25px',
-                      height: 0
+            : videos.map(video => {
+                if (!video || !video.id || !video.id.videoId) {
+                  return null;
+                }
+                const videoId = video.id.videoId;
+                return (
+                  <VideoCard
+                    favoriteVideoIds={favoriteVideoIds}
+                    favoriteVideos={favoriteVideos}
+                    isLoaded={this.state.loaded[videoId]}
+                    key={videoId}
+                    onLoad={() => {
+                      this.setState({
+                        loaded: {
+                          ...this.state.loaded,
+                          [videoId]: true
+                        }
+                      });
                     }}
-                  >
-                    <iframe
-                      title={title}
-                      src={`https://www.youtube.com/embed/${videoId}`}
-                      frameBorder="0"
-                      allow="autoplay; encrypted-media"
-                      allowFullScreen
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        transition: 'opacity linear .3s',
-                        opacity: !this.state.loaded[videoId] ? 0.3 : 1
-                      }}
-                      onLoad={() => {
-                        this.setState({
-                          loaded: {
-                            ...this.state.loaded,
-                            [videoId]: true
-                          }
-                        });
-                      }}
-                    />
-                    {!this.state.loaded[videoId] ? null : (
-                      <ButtonFavorite
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          right: '20%'
-                        }}
-                        onClick={() => {
-                          if (!favoriteVideoIds.includes(videoId)) {
-                            favoriteVideos([videoId]);
-                          } else {
-                            undoFavoriteVideos([videoId]);
-                          }
-                        }}
-                        checked={favoriteVideoIds.includes(videoId)}
-                      />
-                    )}
-                    {!this.state.loaded[videoId] ? (
-                      <LinearProgress
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%'
-                        }}
-                      />
-                    ) : null}
-                  </Paper>
-                </Grid>
-              ))}
+                    responsive={{ xs: 12, sm: 6, md: 4 }}
+                    undoFavoriteVideos={undoFavoriteVideos}
+                    video={video}
+                  />
+                );
+              })}
         </Grid>
         {!pageInfo || !pageInfo.totalResults ? null : (
           <div className={classes.pagination}>
